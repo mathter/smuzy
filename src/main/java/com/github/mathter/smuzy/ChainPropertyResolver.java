@@ -52,7 +52,9 @@ public class ChainPropertyResolver implements PropertyResolver {
                 .stream()
                 .map(resolver -> resolver.resolve(clazz))
                 .filter(e -> e != null)
-                .findFirst()
-                .orElse(null);
+                .reduce(new ArrayList<>(), (l, r) -> {
+                    l.addAll(r);
+                    return l;
+                });
     }
 }

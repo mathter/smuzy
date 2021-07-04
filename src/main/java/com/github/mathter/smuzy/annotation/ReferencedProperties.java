@@ -27,7 +27,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.METHOD})
+@Target({ElementType.TYPE, ElementType.METHOD})
 public @interface ReferencedProperties {
     public Class<?> referencedClass();
 
@@ -35,11 +35,18 @@ public @interface ReferencedProperties {
 
     public boolean annotaionFirst() default true;
 
+    public PropertyType propertyType() default PropertyType.ANNOTATION;
+
     public Property[] properties();
 
     public @interface Property {
         public String value() default SmuzyConstants.NONE;
 
         public String beanProp();
+    }
+
+    public enum PropertyType {
+        ANNOTATION,
+        BEAN
     }
 }

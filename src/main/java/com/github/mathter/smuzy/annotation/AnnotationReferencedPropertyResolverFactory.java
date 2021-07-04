@@ -17,8 +17,9 @@
  */
 package com.github.mathter.smuzy.annotation;
 
-import com.github.mathter.smuzy.ChainPropertyResolver;
 import com.github.mathter.smuzy.AnnotationProperty;
+import com.github.mathter.smuzy.BeanProperty;
+import com.github.mathter.smuzy.ChainPropertyResolver;
 import com.github.mathter.smuzy.MemberResolver;
 import com.github.mathter.smuzy.Property;
 import com.github.mathter.smuzy.PropertyResolver;
@@ -148,10 +149,11 @@ public class AnnotationReferencedPropertyResolverFactory implements Factory {
     private static AnnotationReferencedPropertyResolver referenced(AnnotatedElement object) {
         return Optional.ofNullable(object.getAnnotation(ReferencedProperties.class))
                 .map(rps -> {
-                    final MemberResolver memberResolver;
+                    final MemberResolver.Factory memberResolverFactory;
+                    final ReferencedProperties.PropertyType propertyType = rps.propertyType();
 
                     try {
-                        memberResolver = (MemberResolver) rps.memberResolverFactory().getDeclaredConstructor().newInstance();
+                        memberResolverFactory = (MemberResolver.Factory) rps.memberResolverFactory().getDeclaredConstructor().newInstance();
                     } catch (NoSuchMethodException e) {
                         throw new IllegalStateException("Can't build PropertyResolver!" + rps.referencedClass() + " has no default constructor!", e);
                     } catch (Exception e) {
@@ -162,14 +164,34 @@ public class AnnotationReferencedPropertyResolverFactory implements Factory {
                             rps.referencedClass(),
                             Stream.of(rps.properties())
                                     .flatMap(p ->
-                                            memberResolver.resolve(rps.referencedClass(), p.beanProp())
+                                            memberResolverFactory.get().resolve(rps.referencedClass(), p.beanProp())
                                                     .perfectStream()
-                                                    .map(m -> Pair.of(m, new AnnotationProperty(p.value())))
+                                                    .map(m -> Pair.of(m, AnnotationReferencedPropertyResolverFactory.build(p.value(), propertyType)))
                                     )
+                                    .filter(e -> e.getLeft() != null)
                                     .collect(Collectors.toMap(p -> p.getLeft(), p -> p.getRight()))
                     );
                 })
                 .get();
+    }
+
+    private static Property build(String value, ReferencedProperties.PropertyType propertyType) {
+        final Property property;
+
+        switch (propertyType) {
+            case ANNOTATION:
+                property = new AnnotationProperty(value);
+                break;
+
+            case BEAN:
+                property = new BeanProperty(value);
+                break;
+
+            default:
+                throw new IllegalArgumentException(propertyType + " is undefined!");
+        }
+
+        return property;
     }
 
     private static class AnnotationReferencedPropertyResolver<T> implements PropertyResolver {
